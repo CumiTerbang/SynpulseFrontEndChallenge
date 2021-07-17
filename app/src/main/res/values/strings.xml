@@ -34,6 +34,7 @@
     <string name="otp_send">Your OTP is being Send</string>
     <string name="otp_copytext">check your SMS to get your OTP number and submit it to the field below</string>
     <string name="otp_no">Your OTP Number</string>
+    <string name="timer00">00:00</string>
 
     <string name="dashboard_title_toolbar">Dashboard</string>
     <string name="portfolio_title_toolbar">Portfolio</string>
