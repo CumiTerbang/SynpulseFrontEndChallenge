@@ -8,14 +8,12 @@ import android.view.View
 import android.widget.Toast
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.fragment.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupWithNavController
 import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.*
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.auth.PhoneAuthProvider.ForceResendingToken
 import com.haryop.synpulsefrontendchallenge.R
 import com.haryop.synpulsefrontendchallenge.databinding.ActivityLandingBinding
 import com.haryop.synpulsefrontendchallenge.utils.BaseActivityBinding
@@ -25,10 +23,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
+
 interface SignInUpListener {
+    fun onReSendVerificationCode()
     fun onSendVerificationCode(phoneNumber: String, navactionid:Int)
     fun onVerifyPhoneNumberWithCode(phoneNumber: String)
 }
@@ -44,9 +43,10 @@ class LandingActivity : BaseActivityBinding<ActivityLandingBinding>(), SignInUpL
     private lateinit var resendToken: PhoneAuthProvider.ForceResendingToken
     private lateinit var callbacks: PhoneAuthProvider.OnVerificationStateChangedCallbacks
     private var storedVerificationId: String? = ""
+    private var phoneNumber: String? = ""
     lateinit var navController: NavController
     override fun setupView(binding: ActivityLandingBinding) {
-        auth = Firebase.auth
+        auth = FirebaseAuth.getInstance()
         target_activity = intent.getIntExtra(ConstantsObj.KEY_TARGET_ACTIVITY, 0)
         when (target_activity) {
             ConstantsObj.VALUE_TITLESCREEN_ACTIVITY -> setupAction_TitleScreen(binding.root)
@@ -90,7 +90,7 @@ class LandingActivity : BaseActivityBinding<ActivityLandingBinding>(), SignInUpL
 
             override fun onCodeSent(
                 verificationId: String,
-                token: PhoneAuthProvider.ForceResendingToken
+                token: ForceResendingToken
             ) {
                 // The SMS verification code has been sent to the provided phone number, we
                 // now need to ask the user to enter the code and then construct a credential
@@ -203,12 +203,16 @@ class LandingActivity : BaseActivityBinding<ActivityLandingBinding>(), SignInUpL
         }
     }
 
+    override fun onReSendVerificationCode() {
+        phoneNumber?.let { resendVerificationCode(it, resendToken) }
+    }
+
     override fun onSendVerificationCode(_phoneNumber: String, navactionid:Int) {
-        var phoneNumber = "+62" + _phoneNumber
+        phoneNumber = "+62" + _phoneNumber
         Log.e("otp tes", "phoneNumber= " + phoneNumber)
 
         val options = PhoneAuthOptions.newBuilder(auth)
-            .setPhoneNumber(phoneNumber)       // Phone number to verify
+            .setPhoneNumber(phoneNumber!!)       // Phone number to verify
             .setTimeout(60L, TimeUnit.SECONDS) // Timeout and unit
             .setActivity(this)                 // Activity (for callback binding)
             .setCallbacks(callbacks)          // OnVerificationStateChangedCallbacks
@@ -241,4 +245,17 @@ class LandingActivity : BaseActivityBinding<ActivityLandingBinding>(), SignInUpL
         startActivity(intent)
     }
 
+    private fun resendVerificationCode(
+        phoneNumber: String,
+        token: ForceResendingToken
+    ) {
+        val options = PhoneAuthOptions.newBuilder(auth)
+            .setPhoneNumber(phoneNumber) // Phone number to verify
+            .setTimeout(60L, TimeUnit.SECONDS) // Timeout and unit
+            .setActivity(this) // Activity (for callback binding)
+            .setCallbacks(callbacks) // OnVerificationStateChangedCallbacks
+            .setForceResendingToken(token) // ForceResendingToken from callbacks
+            .build()
+        PhoneAuthProvider.verifyPhoneNumber(options)
+    }
 }
